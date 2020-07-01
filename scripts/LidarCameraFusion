@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun 25 18:14:34 2020
+@author: elif.ayvali
+
+LidarPoint   {x,y,z in [m], r is point reflectivity}
+BoundingBox {
+    boxID        :bounding box around a classified object (contains both 2D and 3D data)
+    trackID      :unique identifier for the track to which this bounding box belongs
+    roi          :cv.Rect 2D region-of-interest in image coordinates
+    classID      :ID based on class file provided to YOLO framework
+    confidence   :classification trust
+            }
+DataFrame {
+    cameraImg    :color camera image
+    keypoints    :2D keypoints within camera image
+    descriptors  :keypoint descriptors
+    kptMatches   :keypoint matches between previous and current frame
+    lidarPoints  :
+    boundingBoxes:
+    bbMatches    :
+          }
+
+"""
+import cv2 as cv
+from recordtype import recordtype #mutable namedtuple
+import glob
+import numpy as np
+import matplotlib.pyplot as plt
+from SensorProcessor import LidarProcessing,CameraProcessing
+from utils import View   
+
+###########################################################################
+#-----------------Define Data Structures and Paths------------------------#
+###########################################################################       
+#Define data structures
+LidarPoint=recordtype('LidarPoint',['x','y','z','r'])
+BoundingBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confidence'])
+DataFrame=recordtype('DataFrame',['cameraImg','keypoints', 'descriptors' ,'kptMatches','lidarPoints','boundingBoxes','bbMatches'])
+
+#Data location
+img_folderpath='../images/KITTI/2011_09_26/image_02/data/*.png'
+img_filepaths=sorted(glob.glob(img_folderpath))
+
+lidar_folderpath='../images/KITTI/2011_09_26/velodyne_points/data/*.bin'
+lidar_filepaths=sorted(glob.glob(lidar_folderpath))
+
+#Loop over all data sequence
+dataBuffer=[]
+idx_step=1
+for idx in range(0,2,idx_step):
+# for idx in range(0,len(img_filepaths),idx_step): #TODO
+
+    ###########################################################################
+    #-----------------------------Process Camera------------------------------#
+    ###########################################################################   
+    img1 = cv.imread(img_filepaths[idx]) 
+    # img2 = cv.imread(img_filepaths[idx+1])     
+    frame=DataFrame(img1,'None', 'None' ,'None','None','None','None')
+    dataBuffer.append(frame)         
+    print("#1 : LOAD IMAGE INTO BUFFER done")
+
+    plt.figure(figsize=(16, 16))
+    plt.title('Front camera')
+    plt.imshow(cv.cvtColor(img1, cv.COLOR_BGR2RGB))
+    plt.show()
+    
+    ###########################################################################
+    #------------------------------Process Lidar------------------------------#
+    ###########################################################################
+
+    velodyne_scan = np.fromfile(lidar_filepaths[idx], dtype=np.float32)
+    #import lidar data
+    lidar_scan=velodyne_scan.reshape((-1, 4))    
+    #-----------------KITTI-------------------#
+    #display topview
+    x_range,y_range,z_range,scale=(-20, 20),(-20, 20),(-2, 2),10
+    img_lidar_topview=View.lidar_top_view_kitti(lidar_scan, x_range, y_range, z_range, scale)#lidar_pts:nx4
+    #remove lidar points outside of the field of view and compute color range based on max distance
+    v_fov, h_fov,max_d = (-24.9, 2.0), (-90, 90),70
+    lidar_pts,lidar_color=LidarProcessing.velo_points_filter_kitti(lidar_scan,v_fov,h_fov,max_d)
+    print("#3 : CROP LIDAR POINTS done")
+    #project lidar points to camera images
+    lidar_px=LidarProcessing.projectLidarToCam(lidar_pts) 
+    #Overlay lidar on camera image
+    img_lidar_fusion=View.lidar_overlay_plt_kitti(lidar_px, lidar_color, img1)
+    
+    plt.figure(figsize=(16, 16))
+    plt.title('Top-View Perspective of LiDAR data (Kitti)')
+    plt.imshow(img_lidar_topview)
+    plt.show()
+    
+    plt.figure(figsize=(16, 16))
+    plt.title('Lidar Fusion (Kitti)')
+    plt.imshow(img_lidar_fusion)
+    plt.show()
+
+    #-----------------Udacity-------------------#
+    img_lidar_topview_udacity=View.lidar_top_view_udacity(lidar_scan)
+    #remove Lidar points based on distance properties
+    # minZ = -1.5; maxZ = -0.9; minX = 2.0; maxX = 20.0; maxY = 2.0; minR = 0.1; # focus on ego lane
+    minZ = -1.4; maxZ = 1e2; minX = 0.0; maxX = 25.0; maxY = 6.0; minR = 0.01;max_d=20;
+    crop_range=(minZ,maxZ,minX,maxX,maxY,minR)
+    lidar_pts_udacity,lidar_color_udacity=LidarProcessing.crop_lidar_points_udacity(lidar_scan,crop_range,max_d)
+    #project lidar points to camera images
+    lidar_px_udacity=LidarProcessing.projectLidarToCam(lidar_pts_udacity) 
+    #Overlay lidar on camera image
+    img_lidar_fusion_udacity=View.lidar_overlay_plt_udacity(lidar_px_udacity, lidar_color_udacity, img1)    
+    
+    plt.figure(figsize=(16, 16))
+    plt.title('Top-View Perspective of LiDAR data (Udacity)')
+    plt.imshow(img_lidar_topview_udacity)
+    plt.axis('off')
+    plt.show()
+    
+    plt.figure(figsize=(16, 16))
+    plt.title(' LiDAR fusion (Udacity)')
+    plt.imshow(img_lidar_fusion_udacity)
+    plt.axis('off')
+    plt.show()
+ 
+    ###########################################################################
+    #-------------------------Descriptor Matching-----------------------------#
+    ###########################################################################       
+    if len(dataBuffer)>1:        
+        img1=dataBuffer[-2].cameraImg#last frame
+        img2=dataBuffer[-1].cameraImg#current frame        
+        kp1,kp2,des1,des2=CameraProcessing.computeFeatureDescriptors(img1,img2)
+        print("#5-6 : DETECT & EXTRACT KEYPOINTS done") 
+        good_matches,good_kp1,good_kp2=CameraProcessing.matchFeatureDescriptor(kp1,kp2,des1,des2)
+        num_good_matches = len(good_matches)
+        print("#7 : MATCH KEYPOINT DESCRIPTORS done" )        
+        cv.drawKeypoints(cv.cvtColor(img1, cv.COLOR_RGB2BGR), good_kp1,img1,(255, 0, 0),cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        cv.drawKeypoints(cv.cvtColor(img2, cv.COLOR_RGB2BGR), good_kp2,img2,(255, 0, 0),cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)    
+        plt.figure(figsize=(16, 16))
+        plt.title('last_frame')
+        plt.imshow(img1)
+        plt.show()        
+        plt.figure(figsize=(16, 16))
+        plt.title('current_frame')
+        plt.imshow(img2)
+        plt.show()
+
