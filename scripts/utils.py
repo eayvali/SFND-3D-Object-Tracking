@@ -8,6 +8,9 @@ Created on Sun Jun 28 16:33:46 2020
 
 import numpy as np
 import cv2 as cv
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
 
 class View:   
             
@@ -92,8 +95,10 @@ class View:
                                              y < y_range[1], z > z_range[0], z < z_range[1]))]
 
     def lidar_top_view_udacity(points):
-        worldSize=(10,20)     #width and height of sensor field in m
+        #(width,height) (col,row) (x,y) image frame
+        worldSize=(10,20)     #(width,height) of sensor field 
         imageSize=(1000,2000) #corresponding top view image in pixel
+        #points[x,y,z,r]:valodyne frame
         topviewImg=np.zeros((imageSize[0],imageSize[1],3), np.uint8)
         # Projecting to 2D
         x = (-points[:, 0]*imageSize[1]/worldSize[1])+imageSize[1]
@@ -114,6 +119,61 @@ class View:
         lineSpacing=2
         nMarkers=int(np.floor(worldSize[1]/lineSpacing))
         for i in range(nMarkers):
-            y=np.int32((-(i+lineSpacing)*imageSize[1]/worldSize[1])+imageSize[1])
-            topviewImg=cv.line(topviewImg, (y,0),(y,imageSize[0]),(255,0,0))   
+            x=np.int32((-(i*lineSpacing)*imageSize[1]/worldSize[1])+imageSize[1])
+            topviewImg=cv.line(topviewImg, (x,0),(x,imageSize[0]),(255,0,0),2) 
+            cv.putText(topviewImg, '|2 meters|',(25,35),cv.FONT_HERSHEY_SIMPLEX,1,(255,0,0),2)
         return cv.cvtColor(topviewImg, cv.COLOR_BGR2RGB) #to display as plt
+
+class Plot:
+    
+    def __init__(self):
+        
+        
+        img_init=np.zeros((300,1000), np.uint8)
+        self.fig=plt.figure()
+        gs=self.fig.add_gridspec(3,2)
+        
+        axs1=self.fig.add_subplot(gs[:2,0])
+        self.plot1=axs1.imshow(img_init,vmin=0,vmax=255, aspect='auto')#defining vmin,vmax is necessary
+        axs1.set_title('Top-View Perspective of LiDAR data (Kitti)', fontsize=10)
+        axs1.axis('off')
+        
+        
+        axs2=self.fig.add_subplot(gs[0,1])
+        self.plot2=axs2.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        axs2.set_title('Top-View Perspective of LiDAR data (Udacity)', fontsize=10)
+        axs2.axis('off')
+        
+        axs3=self.fig.add_subplot(gs[1,1])
+        self.plot3=axs3.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        axs3.set_title('LiDAR fusion (Udacity)', fontsize=10)
+        axs3.axis('off')        
+        
+        axs4=self.fig.add_subplot(gs[2,0])
+        self.plot4=axs4.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        axs4.set_title('Good Keypoints Last Frame', fontsize=10)
+        axs4.axis('off')
+
+        axs5=self.fig.add_subplot(gs[2,1])
+        self.plot5=axs5.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        axs5.set_title('Good Keypoints Current Frame', fontsize=10)
+        axs5.axis('off')
+        
+        figManager = plt.get_current_fig_manager()
+        figManager.window.showMaximized()
+                
+        
+    def get_figure(self):
+        return self.fig
+   
+    
+    def update(self,img_last,img_current,img_lidar_topview ,img_lidar_fusion,img_lidar_topview_udacity,img_lidar_fusion_udacity):
+        self.plot1.set_data(img_lidar_topview)
+        self.plot2.set_data(img_lidar_topview_udacity)
+        self.plot3.set_data(img_lidar_fusion_udacity)
+        self.plot4.set_data(cv.cvtColor(img_last, cv.COLOR_BGR2RGB))
+        self.plot5.set_data(cv.cvtColor(img_current, cv.COLOR_BGR2RGB))
+        
+            
+    
+    
