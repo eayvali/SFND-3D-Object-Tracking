@@ -120,8 +120,8 @@ class View:
         nMarkers=int(np.floor(worldSize[1]/lineSpacing))
         for i in range(nMarkers):
             x=np.int32((-(i*lineSpacing)*imageSize[1]/worldSize[1])+imageSize[1])
-            topviewImg=cv.line(topviewImg, (x,0),(x,imageSize[0]),(255,0,0),2) 
-            cv.putText(topviewImg, '|2 meters|',(25,35),cv.FONT_HERSHEY_SIMPLEX,1,(255,0,0),2)
+            topviewImg=cv.line(topviewImg, (x,0),(x,imageSize[0]),(255,0,0),3) 
+            cv.putText(topviewImg, '|2 meters|',(35,50),cv.FONT_HERSHEY_SIMPLEX,1.5,(255,0,0),4)
         return cv.cvtColor(topviewImg, cv.COLOR_BGR2RGB) #to display as plt
 
 class Plot:
@@ -135,32 +135,34 @@ class Plot:
         
         axs1=self.fig.add_subplot(gs[:2,0])
         self.plot1=axs1.imshow(img_init,vmin=0,vmax=255, aspect='auto')#defining vmin,vmax is necessary
-        axs1.set_title('Top-View Perspective of LiDAR data (Kitti)', fontsize=10)
+        axs1.set_title('Top-View of LiDAR data (KITTI)', fontsize=10)
         axs1.axis('off')
         
         
         axs2=self.fig.add_subplot(gs[0,1])
-        self.plot2=axs2.imshow(img_init,vmin=0,vmax=255, aspect='auto')
-        axs2.set_title('Top-View Perspective of LiDAR data (Udacity)', fontsize=10)
+        self.plot2=axs2.imshow(img_init,vmin=0,vmax=255)
+        axs2.set_title('Top-View of filtered LiDAR data', fontsize=10)
         axs2.axis('off')
         
         axs3=self.fig.add_subplot(gs[1,1])
-        self.plot3=axs3.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        self.plot3=axs3.imshow(img_init,vmin=0,vmax=25)
         axs3.set_title('LiDAR fusion (Udacity)', fontsize=10)
         axs3.axis('off')        
         
         axs4=self.fig.add_subplot(gs[2,0])
-        self.plot4=axs4.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        self.plot4=axs4.imshow(img_init,vmin=0,vmax=255)
         axs4.set_title('Good Keypoints Last Frame', fontsize=10)
         axs4.axis('off')
 
         axs5=self.fig.add_subplot(gs[2,1])
-        self.plot5=axs5.imshow(img_init,vmin=0,vmax=255, aspect='auto')
+        self.plot5=axs5.imshow(img_init,vmin=0,vmax=255)
         axs5.set_title('Good Keypoints Current Frame', fontsize=10)
         axs5.axis('off')
         
         figManager = plt.get_current_fig_manager()
         figManager.window.showMaximized()
+        plt.tight_layout()
+
                 
         
     def get_figure(self):

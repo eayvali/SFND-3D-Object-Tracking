@@ -28,7 +28,7 @@ from recordtype import recordtype #mutable namedtuple
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
-from SensorProcessor import LidarProcessing,CameraProcessing
+from SensorProcessor import LidarProcessing,CameraProcessing,ObjectDetectionOpenCV
 from utils import View, Plot
 
 ###########################################################################
@@ -36,15 +36,22 @@ from utils import View, Plot
 ###########################################################################       
 #Define data structures
 LidarPoint=recordtype('LidarPoint',['x','y','z','r'])
-BoundingBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confidence'])
 DataFrame=recordtype('DataFrame',['cameraImg','keypoints', 'descriptors' ,'kptMatches','lidarPoints','boundingBoxes','bbMatches'])
+BoundingBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confidence','lidarPoints','keypoints','kptMatches'])
 
 #Data location
-img_folderpath='../images/KITTI/2011_09_26/image_02/data/*.png'
+#Images
+img_folderpath='../data/KITTI/2011_09_26/image_02/data/*.png'
 img_filepaths=sorted(glob.glob(img_folderpath))
-
-lidar_folderpath='../images/KITTI/2011_09_26/velodyne_points/data/*.bin'
+#Lidar
+lidar_folderpath='../data/KITTI/2011_09_26/velodyne_points/data/*.bin'
 lidar_filepaths=sorted(glob.glob(lidar_folderpath))
+#Yolo Network
+labelsPath = "../data/YOLO/coco.names"
+weightsPath = "../data/YOLO/yolov3.weights"
+configPath = "../data/YOLO/yolov3.cfg"
+
+
 
 #Loop over all data sequence
 dataBuffer=[]
@@ -55,15 +62,31 @@ for idx in range(0,idx_end,idx_step):
     #-----------------------------Process Camera------------------------------#
     ###########################################################################   
     img = cv.imread(img_filepaths[idx]) 
-    # img2 = cv.imread(img_filepaths[idx+1])     
-    frame=DataFrame(img.copy(),'None', 'None' ,'None','None','None','None')
-    dataBuffer.append(frame)         
-    print("#1 : LOAD IMAGE INTO BUFFER done")
-
     # plt.figure(figsize=(16, 16))
     # plt.title('Front camera')
     # plt.imshow(cv.cvtColor(img1, cv.COLOR_BGR2RGB))
     # plt.show()
+    
+    #YOLO
+    params=dict()
+    params["confidence"]=0.2
+    params["threshold"]=0.4
+    params["shrink"]=0.1
+    bBox=BoundingBox('None','None','None','None', 'None','None','None','None')
+    frame=DataFrame('None','None', 'None' ,'None','None','None','None')
+
+    YOLO=ObjectDetectionOpenCV(params,labelsPath,weightsPath,configPath,bBox) 
+    bBoxes,img_boxes=YOLO.predict(img)    
+    frame.cameraImg=img.copy()
+    frame.boundingBoxes=bBoxes.copy()
+    dataBuffer.append(frame)         
+    print("#1 : LOAD IMAGE INTO BUFFER done")
+    print("#2 : DETECT & CLASSIFY OBJECTS done")
+    
+    plt.figure(figsize=(16, 16))
+    plt.title('Yolo OnjectClassification')
+    plt.imshow(cv.cvtColor(img_boxes, cv.COLOR_BGR2RGB))
+    plt.show()
     
     ###########################################################################
     #------------------------------Process Lidar------------------------------#
@@ -107,11 +130,11 @@ for idx in range(0,idx_end,idx_step):
     #Overlay lidar on camera image
     img_lidar_fusion_udacity=View.lidar_overlay_plt_udacity(lidar_px_udacity, lidar_color_udacity, img)    
     
-    plt.figure(figsize=(16, 16))
-    plt.title('Top-View Perspective of LiDAR data (Udacity)')
-    plt.imshow(img_lidar_topview_udacity)
-    plt.axis('off')
-    plt.show()
+    # plt.figure(figsize=(16, 16))
+    # plt.title('Top-View Perspective of LiDAR data (Udacity)')
+    # plt.imshow(img_lidar_topview_udacity)
+    # plt.axis('off')
+    # plt.show()
     
     # plt.figure(figsize=(16, 16))
     # plt.title(' LiDAR fusion (Udacity)')

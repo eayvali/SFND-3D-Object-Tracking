@@ -41,10 +41,10 @@ BoundingBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confid
 DataFrame=recordtype('DataFrame',['cameraImg','keypoints', 'descriptors' ,'kptMatches','lidarPoints','boundingBoxes','bbMatches'])
 
 #Data location
-img_folderpath='../images/KITTI/2011_09_26/image_02/data/*.png'
+img_folderpath='../data/KITTI/2011_09_26/image_02/data/*.png'
 img_filepaths=sorted(glob.glob(img_folderpath))
 
-lidar_folderpath='../images/KITTI/2011_09_26/velodyne_points/data/*.bin'
+lidar_folderpath='../data/KITTI/2011_09_26/velodyne_points/data/*.bin'
 lidar_filepaths=sorted(glob.glob(lidar_folderpath))
 
 #Loop over all data sequence
@@ -110,9 +110,9 @@ def animate(idx):
         plot_results.update(img_last,img_current,img_lidar_topview ,img_lidar_fusion,img_lidar_topview_udacity,img_lidar_fusion_udacity)
 
 idx_step=1
-idx_stop=20#len(img_filepaths)
+idx_stop=30#len(img_filepaths)
 anim = animation.FuncAnimation(plot_results.get_figure(), animate, frames=np.arange(0,idx_stop,idx_step),repeat=False)
 plt.draw()
 plt.show()
-# save animation at 30 frames per second 
-anim.save('SensorFusion.gif', writer='imagemagick', fps=30)
+# save animation at 10 frames per second 
+# anim.save('SensorFusion.gif', writer='imagemagick', fps=10,dpi=200)
