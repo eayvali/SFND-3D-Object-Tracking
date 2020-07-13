@@ -30,79 +30,113 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from SensorProcessor import LidarProcessing,CameraProcessing
+from YOLO import ObjectDetection,ObjectDetectionOpenCV
 from utils import View, Plot
 
 ###########################################################################
 #-----------------Define Data Structures and Paths------------------------#
 ###########################################################################       
 #Define data structures
-LidarPoint=recordtype('LidarPoint',['x','y','z','r'])
-BoundingBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confidence'])
 DataFrame=recordtype('DataFrame',['cameraImg','keypoints', 'descriptors' ,'kptMatches','lidarPoints','boundingBoxes','bbMatches'])
+BoundingBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confidence', 'lidarPoints','lidarPixels','keypoints','kptMatches'])
+
 
 #Data location
+#Images
 img_folderpath='../data/KITTI/2011_09_26/image_02/data/*.png'
 img_filepaths=sorted(glob.glob(img_folderpath))
-
+#Lidar
 lidar_folderpath='../data/KITTI/2011_09_26/velodyne_points/data/*.bin'
 lidar_filepaths=sorted(glob.glob(lidar_folderpath))
+#Yolo Network
+labelsPath = "../data/YOLO/coco.names"
+weightsPath = "../data/YOLO/yolov3.weights"
+configPath = "../data/YOLO/yolov3.cfg"
+modelPath = "../data/YOLO/yolov3_model.h5"
+
 
 #Loop over all data sequence
 dataBuffer=[]
 plot_results=Plot()
+view=View()
+LP=LidarProcessing()
+CP=CameraProcessing()
+
+#YOLO
+params=dict()
+params["confidence"]=0.2
+params["threshold"]=0.4
+params["shrink"]=0.1
+bBox=BoundingBox('None','None','None','None', 'None','None','None','None','None')
+frame=DataFrame('None','None', 'None' ,'None','None','None','None')
+
+#LiDAR
+#Kitti
+x_range,y_range,z_range,scale=(-20, 20),(-20, 20),(-2, 2),10
+v_fov, h_fov,max_d = (-24.9, 2.0), (-90, 90),70
+#Udacity
+# minZ = -1.5; maxZ = -0.9; minX = 2.0; maxX = 20.0; maxY = 2.0; minR = 0.1; # focus on ego lane
+minZ = -1.4; maxZ = 1e2; minX = 0.0; maxX = 25.0; maxY = 6.0; minR = 0.01;max_d=20;
         
 def animate(idx):
     ###########################################################################
     #-----------------------------Process Camera------------------------------#
     ###########################################################################   
     img = cv.imread(img_filepaths[idx]) 
-    # img2 = cv.imread(img_filepaths[idx+1])     
-    frame=DataFrame(img.copy(),'None', 'None' ,'None','None','None','None')
+
+    # YOLO OpenCV Implementation
+    YOLO=ObjectDetectionOpenCV(params,labelsPath,weightsPath,configPath,bBox) 
+    #YOLO Keras Implementation
+    # YOLO=ObjectDetection(params,labelsPath,modelPath,bBox) 
+    bBoxes,img_boxes=YOLO.predict(img.copy())  #returns list of bBox   
+    frame.cameraImg=img.copy()
+    frame.boundingBoxes=bBoxes.copy()
     dataBuffer.append(frame)         
     print("#1 : LOAD IMAGE INTO BUFFER done")
+    print("#2 : DETECT & CLASSIFY OBJECTS done")
     
     ###########################################################################
     #------------------------------Process Lidar------------------------------#
     ###########################################################################
-
     velodyne_scan = np.fromfile(lidar_filepaths[idx], dtype=np.float32)
     #import lidar data
     lidar_scan=velodyne_scan.reshape((-1, 4))    
     #-----------------KITTI-------------------#
     #display topview
-    x_range,y_range,z_range,scale=(-20, 20),(-20, 20),(-2, 2),10
-    img_lidar_topview_kitti=View.lidar_top_view_kitti(lidar_scan, x_range, y_range, z_range, scale)#lidar_pts:nx4
+    img_lidar_topview_kitti=view.lidar_top_view_kitti(lidar_scan, x_range, y_range, z_range, scale)#lidar_pts:nx4
     #remove lidar points outside of the field of view and compute color range based on max distance
-    v_fov, h_fov,max_d = (-24.9, 2.0), (-90, 90),50
-    lidar_pts_kitti,lidar_color_kitti=LidarProcessing.velo_points_filter_kitti(lidar_scan,v_fov,h_fov,max_d)
+    lidar_pts_kitti,lidar_color_kitti=LP.velo_points_filter_kitti(lidar_scan,v_fov,h_fov,max_d)
     print("#3 : CROP LIDAR POINTS done")
     #project lidar points to camera images
-    lidar_px_kitti=LidarProcessing.projectLidarToCam(lidar_pts_kitti) 
+    lidar_px_kitti=LP.projectLidarToCam(lidar_pts_kitti) 
     #Overlay lidar on camera image
-    img_lidar_fusion_kitti=View.lidar_overlay_plt_kitti(lidar_px_kitti, lidar_color_kitti, img)
-
-    #-----------------Udacity-------------------#
-    img_lidar_topview=View.lidar_top_view(lidar_scan)
-    #remove Lidar points based on distance properties
-    # minZ = -1.5; maxZ = -0.9; minX = 2.0; maxX = 20.0; maxY = 2.0; minR = 0.1; # focus on ego lane
-    minZ = -1.4; maxZ = 20; minX = 0.0; maxX = 25.0; maxY = 6.0; minR = 0.01;max_d=20;
-    crop_range=(minZ,maxZ,minX,maxX,maxY,minR)
-    lidar_pts,lidar_color=LidarProcessing.crop_lidar_points(lidar_scan,crop_range,max_d)
-    #project lidar points to camera images
-    lidar_px=LidarProcessing.projectLidarToCam(lidar_pts) 
-    #Overlay lidar on camera image
-    img_lidar_fusion=View.lidar_overlay_plt(lidar_px, lidar_color, img)    
+    img_lidar_fusion_kitti=view.lidar_overlay_kitti(lidar_px_kitti, lidar_color_kitti, img)      
     
- 
+    #-----------------Udacity-------------------#
+    img_lidar_topview=view.lidar_top_view(lidar_scan)
+    #remove Lidar points based on distance properties
+    crop_range=(minZ,maxZ,minX,maxX,maxY,minR)
+    lidar_pts,lidar_color=LP.crop_lidar_points(lidar_scan,crop_range,max_d)
+    #project lidar points to camera images
+    lidar_px=LP.projectLidarToCam(lidar_pts) 
+    #Overlay lidar on camera image
+    img_lidar_fusion=view.lidar_overlay(lidar_px, lidar_color, img)       
+    #-------------------Cluster Lidar----------------------#
+    #Clustor lidar pixels with Boundingbox ROI    
+    bBoxes_clustered=LP.cluster_lidar_with_ROI(bBoxes,lidar_px,lidar_pts)
+    print( "#4 : CLUSTER LIDAR POINT CLOUD done")       
+    img_clustered_lidar_topview=view.lidar_3d_objects(bBoxes_clustered)    
+    img_clustered_lidar_cam_overlay=view.lidar_overlay_objects(bBoxes_clustered,img_boxes,max_d)    
+
     ###########################################################################
     #-------------------------Descriptor Matching-----------------------------#
     ###########################################################################       
     if len(dataBuffer)>1:        
         img_last=np.copy(dataBuffer[-2].cameraImg)#last frame
         img_current=np.copy(dataBuffer[-1].cameraImg)#current frame        
-        kp_last,kp_current,des_last,des_current=CameraProcessing.computeFeatureDescriptors(img_last,img_current)
+        CP.computeFeatureDescriptors(img_last,img_current)
         print("#5-6 : DETECT & EXTRACT KEYPOINTS done") 
-        good_matches,good_kp_last,good_kp_current=CameraProcessing.matchFeatureDescriptor(kp_last,kp_current,des_last,des_current)
+        good_matches,good_kp_last,good_kp_current=CP.matchFeatureDescriptor()
         num_good_matches = len(good_matches)
         print("#7 : MATCH KEYPOINT DESCRIPTORS done" )        
         cv.drawKeypoints(img_last, good_kp_last,img_last,(0, 0, 255),cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -110,9 +144,9 @@ def animate(idx):
         plot_results.update(img_last,img_current,img_lidar_topview ,img_lidar_fusion,img_lidar_topview_kitti)
 
 idx_step=1
-idx_stop=30#len(img_filepaths)
+idx_stop=10#len(img_filepaths)
 anim = animation.FuncAnimation(plot_results.get_figure(), animate, frames=np.arange(0,idx_stop,idx_step),repeat=False)
 plt.draw()
 plt.show()
 # save animation at 10 frames per second 
-# anim.save('SensorFusion.gif', writer='imagemagick', fps=10,dpi=200)
+anim.save('SensorFusion.gif', writer='imagemagick', fps=10,dpi=200)

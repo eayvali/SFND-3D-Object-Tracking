@@ -101,10 +101,10 @@ class View:
 
     def lidar_top_view(self, points):
         #points[x,y,z,r]:valodyne frame
-        topviewImg=np.zeros((self.imageSize[0],self.imageSize[1],3), np.uint8)
+        topviewImg=np.zeros((self.imageSize[1],self.imageSize[0],3), np.uint8)
         # Projecting to 2D
-        x = (-points[:, 0]*self.imageSize[1]/self.worldSize[1])+self.imageSize[1]
-        y = (-points[:, 1]*self.imageSize[0]/self.worldSize[0])+self.imageSize[0]/2
+        y = (-points[:, 0]*self.imageSize[1]/self.worldSize[1])+self.imageSize[1]
+        x = (-points[:, 1]*self.imageSize[0]/self.worldSize[0])+self.imageSize[0]/2
         # z = points[:, 2]#not used
         
         #only plot above the road
@@ -121,13 +121,13 @@ class View:
         lineSpacing=2
         nMarkers=int(np.floor(self.worldSize[1]/lineSpacing))
         for i in range(nMarkers):
-            x=np.int32((-(i*lineSpacing)*self.imageSize[1]/self.worldSize[1])+self.imageSize[1])
-            topviewImg=cv.line(topviewImg, (x,0),(x,self.imageSize[0]),(255,0,0),3) 
+            y=np.int32((-(i*lineSpacing)*self.imageSize[1]/self.worldSize[1])+self.imageSize[1])
+            topviewImg=cv.line(topviewImg, (0,y),(self.imageSize[0],y),(255,0,0),3) 
             cv.putText(topviewImg, '|2 meters|',(35,50),cv.FONT_HERSHEY_SIMPLEX,1.5,(255,0,0),4)
         return cv.cvtColor(topviewImg, cv.COLOR_BGR2RGB) #to display as plt
 
     def lidar_3d_objects(self, bBoxes):
-        topviewImg=np.zeros((self.imageSize[0],self.imageSize[1],3), np.uint8)
+        topviewImg=np.zeros((self.imageSize[1],self.imageSize[0],3), np.uint8)
         color_options= np.random.choice(range(256), size=(len(bBoxes),3))
         for idx,box in enumerate(bBoxes):
             (top,left,bottom,right)=(1e4,1e4,0.0,0.0)
@@ -135,8 +135,8 @@ class View:
             #convert box to top view
             for (px,py,_,_) in box.lidarPoints:#(n,4)
                 # Projecting to 2D top image
-                x = int((-px*self.imageSize[1]/self.worldSize[1])+self.imageSize[1])
-                y = int((-py*self.imageSize[0]/self.worldSize[0])+self.imageSize[0]/2)         
+                y = int((-px*self.imageSize[1]/self.worldSize[1])+self.imageSize[1])
+                x = int((-py*self.imageSize[0]/self.worldSize[0])+self.imageSize[0]/2)         
                 #find enclosing rectangle
                 top=min(top,y)
                 left=min(left,x)
@@ -148,8 +148,8 @@ class View:
         lineSpacing=2
         nMarkers=int(np.floor(self.worldSize[1]/lineSpacing))
         for i in range(nMarkers):
-            x=np.int32((-(i*lineSpacing)*self.imageSize[1]/self.worldSize[1])+self.imageSize[1])
-            topviewImg=cv.line(topviewImg, (x,0),(x,self.imageSize[0]),(255,0,0),3) 
+            y=np.int32((-(i*lineSpacing)*self.imageSize[1]/self.worldSize[1])+self.imageSize[1])
+            topviewImg=cv.line(topviewImg, (0,y),(self.imageSize[0],y),(255,0,0),3) 
             cv.putText(topviewImg, '|2 meters|',(35,50),cv.FONT_HERSHEY_SIMPLEX,1.5,(255,0,0),4)
         return cv.cvtColor(topviewImg, cv.COLOR_BGR2RGB) #to display as plt
 
@@ -212,7 +212,7 @@ class Plot:
     
     def update(self,img_last,img_current,img_lidar_topview ,img_lidar_fusion,img_lidar_topview_kitti):
         self.plot1.set_data(img_lidar_topview_kitti)
-        self.plot2.set_data(img_lidar_topview)
+        self.plot2.set_data(cv.rotate(img_lidar_topview,cv.ROTATE_90_CLOCKWISE))
         self.plot3.set_data(img_lidar_fusion)
         self.plot4.set_data(cv.cvtColor(img_last, cv.COLOR_BGR2RGB))
         self.plot5.set_data(cv.cvtColor(img_current, cv.COLOR_BGR2RGB))

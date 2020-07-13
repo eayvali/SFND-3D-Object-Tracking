@@ -60,9 +60,26 @@ modelPath = "../data/YOLO/yolov3_model.h5"
 dataBuffer=[]
 idx_step=1
 idx_end=1#len(img_filepaths)
-View=View()
+view=View()
 LP=LidarProcessing()
 CP=CameraProcessing()
+
+#YOLO
+params=dict()
+params["confidence"]=0.2
+params["threshold"]=0.4
+params["shrink"]=0.1
+bBox=BoundingBox('None','None','None','None', 'None','None','None','None','None')
+frame=DataFrame('None','None', 'None' ,'None','None','None','None')
+
+#LiDAR
+#Kitti
+x_range,y_range,z_range,scale=(-20, 20),(-20, 20),(-2, 2),10
+v_fov, h_fov,max_d = (-24.9, 2.0), (-90, 90),70
+#Udacity
+# minZ = -1.5; maxZ = -0.9; minX = 2.0; maxX = 20.0; maxY = 2.0; minR = 0.1; # focus on ego lane
+minZ = -1.4; maxZ = 1e2; minX = 0.0; maxX = 25.0; maxY = 6.0; minR = 0.01;max_d=20;
+
 
 for idx in range(0,idx_end,idx_step):
     ###########################################################################
@@ -72,15 +89,8 @@ for idx in range(0,idx_end,idx_step):
     # plt.figure(figsize=(16, 16))
     # plt.title('Front camera')
     # plt.imshow(cv.cvtColor(img1, cv.COLOR_BGR2RGB))
-    # plt.show()
-    
-    #YOLO
-    params=dict()
-    params["confidence"]=0.2
-    params["threshold"]=0.4
-    params["shrink"]=0.1
-    bBox=BoundingBox('None','None','None','None', 'None','None','None','None','None')
-    frame=DataFrame('None','None', 'None' ,'None','None','None','None')
+    # plt.show() 
+
 
     # YOLO OpenCV Implementation
     YOLO=ObjectDetectionOpenCV(params,labelsPath,weightsPath,configPath,bBox) 
@@ -106,34 +116,31 @@ for idx in range(0,idx_end,idx_step):
     lidar_scan=velodyne_scan.reshape((-1, 4))    
     #-----------------KITTI-------------------#
     #display topview
-    x_range,y_range,z_range,scale=(-20, 20),(-20, 20),(-2, 2),10
-    img_lidar_topview_kitti=View.lidar_top_view_kitti(lidar_scan, x_range, y_range, z_range, scale)#lidar_pts:nx4
+    img_lidar_topview_kitti=view.lidar_top_view_kitti(lidar_scan, x_range, y_range, z_range, scale)#lidar_pts:nx4
     #remove lidar points outside of the field of view and compute color range based on max distance
-    v_fov, h_fov,max_d = (-24.9, 2.0), (-90, 90),70
     lidar_pts_kitti,lidar_color_kitti=LP.velo_points_filter_kitti(lidar_scan,v_fov,h_fov,max_d)
     print("#3 : CROP LIDAR POINTS done")
     #project lidar points to camera images
     lidar_px_kitti=LP.projectLidarToCam(lidar_pts_kitti) 
     #Overlay lidar on camera image
-    img_lidar_fusion_kitti=View.lidar_overlay_kitti(lidar_px_kitti, lidar_color_kitti, img)      
+    img_lidar_fusion_kitti=view.lidar_overlay_kitti(lidar_px_kitti, lidar_color_kitti, img)      
     
     #-----------------Udacity-------------------#
-    img_lidar_topview=View.lidar_top_view(lidar_scan)
+    img_lidar_topview=view.lidar_top_view(lidar_scan)
     #remove Lidar points based on distance properties
     # minZ = -1.5; maxZ = -0.9; minX = 2.0; maxX = 20.0; maxY = 2.0; minR = 0.1; # focus on ego lane
-    minZ = -1.4; maxZ = 1e2; minX = 0.0; maxX = 25.0; maxY = 6.0; minR = 0.01;max_d=20;
     crop_range=(minZ,maxZ,minX,maxX,maxY,minR)
     lidar_pts,lidar_color=LP.crop_lidar_points(lidar_scan,crop_range,max_d)
     #project lidar points to camera images
     lidar_px=LP.projectLidarToCam(lidar_pts) 
     #Overlay lidar on camera image
-    img_lidar_fusion=View.lidar_overlay(lidar_px, lidar_color, img)       
+    img_lidar_fusion=view.lidar_overlay(lidar_px, lidar_color, img)       
     #-------------------Cluster Lidar----------------------#
     #Clustor lidar pixels with Boundingbox ROI    
     bBoxes_clustered=LP.cluster_lidar_with_ROI(bBoxes,lidar_px,lidar_pts)
     print( "#4 : CLUSTER LIDAR POINT CLOUD done")       
-    img_clustered_lidar_topview=View.lidar_3d_objects(bBoxes_clustered)    
-    img_clustered_lidar_cam_overlay=View.lidar_overlay_objects(bBoxes_clustered,img_boxes,max_d)    
+    img_clustered_lidar_topview=view.lidar_3d_objects(bBoxes_clustered)    
+    img_clustered_lidar_cam_overlay=view.lidar_overlay_objects(bBoxes_clustered,img_boxes,max_d)    
 
 
 
@@ -147,30 +154,31 @@ for idx in range(0,idx_end,idx_step):
     # plt.imshow(img_lidar_fusion_kitti)
     # plt.show()
     
-    # plt.figure(figsize=(16, 16))
-    # plt.title('Top-View Perspective of LiDAR data ')
-    # plt.imshow(img_lidar_topview)
-    # plt.axis('off')
-    # plt.show()
-    
     plt.figure(figsize=(16, 16))
-    plt.title(' LiDAR fusion ')
-    plt.imshow(img_lidar_fusion)
+    plt.title('Top-View Perspective of LiDAR data ')
+    plt.imshow(img_lidar_topview)
     plt.axis('off')
     plt.show()
+    
+    # plt.figure(figsize=(16, 16))
+    # plt.title(' LiDAR fusion ')
+    # plt.imshow(img_lidar_fusion)
+    # plt.axis('off')
+    # plt.show()
         
-    plt.figure(figsize=(16, 16))
-    plt.title('Clustered LiDAR Top View ')
-    plt.imshow(img_clustered_lidar_topview)
-    plt.axis('off')
-    plt.show()   
+    # plt.figure(figsize=(16, 16))
+    # plt.title('Clustered LiDAR Top View')
+    # plt.imshow(img_clustered_lidar_topview)
+    # plt.axis('off')
+    # plt.show()   
     
-    plt.figure(figsize=(16, 16))
-    plt.title('Clustered LiDAR Overlay ')
-    plt.imshow(img_clustered_lidar_cam_overlay)
-    plt.axis('off')
-    plt.show()   
-    
+    # plt.figure(figsize=(16, 16))
+    # plt.title('Clustered LiDAR Overlay ')
+    # plt.imshow(img_clustered_lidar_cam_overlay)
+    # plt.axis('off')
+    # plt.show()   
+
+
     ###########################################################################
     #-------------------------Descriptor Matching-----------------------------#
     ###########################################################################       
