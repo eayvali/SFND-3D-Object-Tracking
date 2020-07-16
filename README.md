@@ -44,7 +44,7 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 
 ### Dependencies
 
-Tested on ubuntu 18.04 and Windows 10
+Tested on ubuntu 18.04 
 * conda 4.8.3
 * keras 2.3.1
 * tensorflow 1.14.0
