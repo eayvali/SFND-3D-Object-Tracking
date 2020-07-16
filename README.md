@@ -1,7 +1,7 @@
-# LiDAR and Camera Fusion for Estimating Time-to-Collision
+## LiDAR and Camera Fusion for Estimating Time-to-Collision
 
 
-## Description
+### Description
 
 This repository contains started code for 3D Object Tracking project as part of Udacity Sensor Fusion Nanodegree.
 The goal is to compute time to collision by fusing 3D position infromation obtained from LiDAR point cloud with object detection using camera images.
@@ -10,13 +10,11 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 ![clustered_lidar_overlay](./figures/ClusteredLidarOverlay.png)
 
 
-## Code Structure 
+### Code Structure 
 
 ![code_structure](./figures/CodeStructure.png)
 
-![sensor_fusion](./figures/SensorFusion.gif)  
-
-/scripts/SensorProcessor.py :
+**/scripts/SensorProcessor.py :**
 
 - CameraProcessing class implements all image processing methods
 	- computeFeatureDescriptors: given two consecutive frames, computes FAST keypoint detector and BRIEF descriptors for each frame (Step 5-6)
@@ -27,7 +25,7 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 	- crop_lidar_points: crops lidar points based on a given 3D position range and reflectivity. (Step 3)
 	- cluster_lidar_with_ROI: given anchor box coordinates from YOLO, clusters the lidar points within the bounding boxes and removes overlaps (Step 4)
 
-/scripts/YOLO.py :
+**/scripts/YOLO.py :**
 
 - ObjectDetectionOpenCV class implements YOLO v3 using OpenCV dnn library [3]
 	- predict: decodes YOLO network output to anchor box coordinates, labels and confidence scores and implements non-maximum suppression. (Step 2)
@@ -35,17 +33,22 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 	- predict: decodes YOLO network output to anchor box coordinates, labels and confidence scores and implements non-maximum suppression. (Step 2)
 - Helper functions from [4]  for ObjectDetection class
 
-/scripts/LidarCameraFusion.py (Step 1)
+**/scripts/LidarCameraFusion.py** (Step 1)
 
-/scripts/LidarCameraFusion_animate.py : generates the sensor fusion gif  above
+**/scripts/LidarCameraFusion_animate.py :** generates the sensor fusion gif  above
 
-/scripts/Utils.py :
+**/scripts/Utils.py :**
 
 - View class: helper class to plot results of each step
 - Plot class: helper class for creating animation
 
 
-## Dependencies
+
+![sensor_fusion](./figures/SensorFusion.gif)  
+
+
+
+### Dependencies
 
 Tested on ubuntu 18.04 and Windows 10
 * conda 4.8.3
@@ -56,7 +59,7 @@ Tested on ubuntu 18.04 and Windows 10
 * glob 
 
 
-## References
+### References
 
 Code references were cited in the scripts.
 
