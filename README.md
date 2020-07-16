@@ -18,7 +18,7 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 	- computeFeatureDescriptors: given two consecutive frames, computes FAST keypoint detector and BRIEF descriptors for each frame (Step 5-6)
 	- matchFeatureDescriptor: computes good descriptor matches based on distance ratio test (Step 7)
 - LidarProcessing class implements all LiDAR processing methods
-	- projectLidarToCam: projects 3D lidar points to camera image and returns 2d lidar coordinates in camera space 
+	- projectLidarToCam: projects 3D lidar points to camera image and returns 2D lidar coordinates in camera space 
 	- velo_points_filter_kitti:crops lidar points based on [2] vertical and horizontal field of view  (pitch, yaw). (Step 3)
 	- crop_lidar_points: crops lidar points based on a given 3D position range and reflectivity. (Step 3)
 	- cluster_lidar_with_ROI: given anchor box coordinates from YOLO, clusters the lidar points within the bounding boxes and removes overlaps (Step 4)
@@ -27,7 +27,7 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 
 - ObjectDetectionOpenCV class implements YOLO v3 using OpenCV dnn library [3]
 	- predict: decodes YOLO network output to anchor box coordinates, labels and confidence scores and implements non-maximum suppression. (Step 2)
-- ObjectDetection class: implements YOLO v3 using Keras [4]
+- ObjectDetection class implements YOLO v3 using Keras [4]
 	- predict: decodes YOLO network output to anchor box coordinates, labels and confidence scores and implements non-maximum suppression. (Step 2)
 - Helper functions from [4]  for ObjectDetection class
 
