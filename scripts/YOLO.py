@@ -253,6 +253,7 @@ def get_boxes(boxes, labels, thresh):
     
 class ObjectDetection:
         # load yolov3 model and perform object detection
+        # https://machinelearningmastery.com/how-to-perform-object-detection-with-yolov3-in-keras/
     def __init__(self,params,labelsPath,modelPath,bBox):
         #bBox=recordtype('BoundingBox',['boxID','trackID','roi','classID', 'confidence','lidarPoints','keypoints','kptMatches'])
         self.BoundingBox=bBox
