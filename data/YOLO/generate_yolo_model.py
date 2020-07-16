@@ -1,4 +1,5 @@
 # create a YOLOv3 Keras model and save it to file
+# source:https://machinelearningmastery.com/how-to-perform-object-detection-with-yolov3-in-keras/
 # based on https://github.com/experiencor/keras-yolo3
 import struct
 import numpy as np
