@@ -1,8 +1,5 @@
 # LiDAR and Camera Fusion for Estimating Time-to-Collision
 
-
-## Description
-
 This repository contains starter code for the 3D Object Tracking project as part of Udacity Sensor Fusion Nanodegree.
 The goal is to compute time to collision by fusing 3D position infromation obtained from LiDAR point cloud with object detection using camera images.
 The starter code in the nanodegree is gradually developed in C++ in 7 steps as part of the lectures. I reimplemented the 7 steps in python to quickly prototype algorithms and play around with different ideas before implementing the C++ solution. I hope this would be useful for others as well. For YOLO V3, I incorporated both OpenCV dnn library and keras model. In the final code, I use OpenCV version since it is much faster. I also incorporated some plotting functions from Kitti python code base that crop Lidar data using field of view and visualize top-view. You can download the data from [1].
