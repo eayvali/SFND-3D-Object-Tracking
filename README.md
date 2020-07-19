@@ -1,4 +1,4 @@
-## LiDAR and Camera Fusion for Estimating Time-to-Collision
+# LiDAR and Camera Fusion for Estimating Time-to-Collision
 
 
 ## Description
