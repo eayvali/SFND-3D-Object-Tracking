@@ -1,7 +1,7 @@
 ## LiDAR and Camera Fusion for Estimating Time-to-Collision
 
 
-### Description
+## Description
 
 This repository contains starter code for the 3D Object Tracking project as part of Udacity Sensor Fusion Nanodegree.
 The goal is to compute time to collision by fusing 3D position infromation obtained from LiDAR point cloud with object detection using camera images.
@@ -10,7 +10,7 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 ![sensor_fusion](./figures/SensorFusion.gif) 
 
 
-### Code Structure 
+## Code Structure 
 
 **/scripts/SensorProcessor.py :**
 
@@ -42,7 +42,7 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 
 ![code_structure](./figures/CodeStructure.png)
 
-### Dependencies
+## Dependencies
 
 Tested on ubuntu 18.04 
 * conda 4.8.3
@@ -53,7 +53,7 @@ Tested on ubuntu 18.04
 * glob 
 
 
-### References
+## References
 
 Code references were cited in the scripts.
 
