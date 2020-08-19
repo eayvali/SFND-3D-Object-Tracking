@@ -99,14 +99,15 @@ class ObjectDetectionOpenCV:
                 y_shrink=int(y+self.params["shrink"]*h/2.0)
                 w_shrink=int(w*(1-self.params["shrink"]))
                 h_shrink=int(h*(1-self.params["shrink"]))
-                cv.rectangle(image, (x_shrink, y_shrink), (x_shrink + w_shrink, y_shrink + h_shrink), color, 1)
-                text = "{}: {:.4f}".format(self.LABELS[classIDs[i]], confidences[i])
-                cv.putText(image, text, (x_shrink+10, y_shrink - 5), cv.FONT_HERSHEY_SIMPLEX,0.5, color, 2)   
                 self.BoundingBox.boxID=len(bBoxes)
                 self.BoundingBox.classID=classIDs[i]
                 self.BoundingBox.confidence=confidences[i]
                 self.BoundingBox.roi=[x_shrink, y_shrink, w_shrink, h_shrink]
                 bBoxes.append(copy.copy(self.BoundingBox))
+                cv.rectangle(image, (x_shrink, y_shrink), (x_shrink + w_shrink, y_shrink + h_shrink), color, 1)
+                text = ", {}: {:.2f}".format(self.LABELS[classIDs[i]], confidences[i])
+                cv.putText(image, 'ID:'+ str(self.BoundingBox.boxID)+ text, (x_shrink+10, y_shrink - 5), cv.FONT_HERSHEY_SIMPLEX,0.5, color, 1)   
+
         return bBoxes,image        
     
             

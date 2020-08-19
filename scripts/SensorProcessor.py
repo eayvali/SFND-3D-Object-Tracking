@@ -14,36 +14,171 @@ class CameraProcessing:
     def __init__(self):
         pass
             
-    def computeFeatureDescriptors(self,img1,img2):
-        #Initiate fast keypoint detector, brief descriptor
+
+    def computeFeatureDescriptors(self,img):
+        # Initiate fast keypoint detector, brief descriptor
         star = cv.xfeatures2d.StarDetector_create()
         brief = cv.xfeatures2d.BriefDescriptorExtractor_create()
-        brief=cv.xfeatures2d.BriefDescriptorExtractor_create()
-        kp1=star.detect(img1,None)
-        kp2=star.detect(img2,None)
-        self.kp1,self.des1= brief.compute(img1, kp1) 
-        self.kp2,self.des2= brief.compute(img2, kp2)         
+        kp1=star.detect(img,None)
+        kp1,des1= brief.compute(img, kp1)    
+        
+        orb = cv.ORB_create(nfeatures=500)   
+        kp2, des2 = orb.detectAndCompute(img, None)  
+        kp=[*kp1,*kp2]
+        des=np.vstack((des1,des2))
+        return kp,des   
     
-    def matchFeatureDescriptor(self):
+    def matchFeatureDescriptor(self,current_frame,last_frame):
+        kp_current=current_frame.keypoints
+        des_current=current_frame.descriptors
+        kp_last=last_frame.keypoints
+        des_last=last_frame.descriptors
        
         #Define Flann descriptor matcher   
         FLANN_INDEX_LSH = 6 
         FLANN_INDEX_KDTREE = 0
         index_params = dict(algorithm=FLANN_INDEX_LSH,
-                                table_number=6, key_size=12,
-                                multi_probe_level=1)
-        search_params = dict() # dict(checks=50)  
+                                table_number=12, key_size=20,
+                                multi_probe_level=2)
+        search_params = dict(checks=50)  
         descriptor_matcher=cv.FlannBasedMatcher(index_params, search_params)    
         # Find the 2 best matches for each descriptor.
-        matches = descriptor_matcher.knnMatch(self.des1,self.des2, 2)
+        matches = descriptor_matcher.knnMatch(des_last,des_current, 2) #(src,ref)    
+
         # Filter the matches based on the distance ratio test.
         good_matches = [match[0] for match in matches if len(match) > 1 and \
-                    match[0].distance < 0.6 * match[1].distance]
+                    match[0].distance < 0.7 * match[1].distance]
             
         # Select the good keypoints 
-        good_kp1 = [self.kp1[match.queryIdx] for match in good_matches] #current frame
-        good_kp2 = [self.kp2[match.trainIdx] for match in good_matches] #matching frame        
-        return good_matches,good_kp1,good_kp2
+        good_kp_current = [kp_current[match.trainIdx] for match in good_matches] #current frame
+        good_kp_last = [kp_last[match.queryIdx] for match in good_matches] #last frame        
+        return good_matches,good_kp_current,good_kp_last
+
+    def matchBoundingBoxes(self, good_kp_current,good_kp_last,bBoxes_current,bBoxes_last):    
+        '''
+        box_flag_current:(num_of_boxes_current,num_of_keypoints)
+        box_flag_last:(num_of_boxes_last,num_of_keypoints)
+        box_similarity: row: last_frame, column : current_frame
+        keypoint coordinates: keypoint.pt
+        '''
+
+        #Method 1:
+        last_boxID=[box.boxID for box in bBoxes_last]
+        current_boxID=[box.boxID for box in bBoxes_current]
+
+        box_match_cnt=np.zeros((len(bBoxes_last),len(bBoxes_current)))
+        
+        for idx, (kp_current,kp_last) in enumerate(zip(good_kp_current,good_kp_last)): 
+            current_box_idx=-1
+            last_box_idx=-1            
+            for idx_box, box in enumerate(bBoxes_current):
+                if self.__box_contains(box.roi,kp_current):
+                    current_box_idx=idx_box                      
+            for idx_box, box in enumerate(bBoxes_last):
+                if self.__box_contains(box.roi,kp_last):
+                    last_box_idx=idx_box 
+            if current_box_idx>=0 and last_box_idx>=0:
+                box_match_cnt[last_box_idx,current_box_idx]+=1
+        
+        box_similarity=np.array(box_match_cnt)
+        #last_boxID->current_boxID
+        match_idx=np.argmax(box_similarity,axis=1)      
+        #set matches for the last_frame boxes who don't have any keypoint matches to -1
+        num_of_kp_matches=np.sum(box_similarity,axis=1)       
+        noMatch_indeces=np.argwhere(num_of_kp_matches == 0)  #set the match for these to -1
+        for idx in noMatch_indeces:
+            match_idx[idx]=-1
+            
+        bbBestMatches1=[(last_boxID[i], current_boxID[idx]) for i,idx in enumerate(match_idx) if idx >=0 ]            
+        
+        #Method 2:
+        box_flag_current=np.zeros((len(bBoxes_current),len(good_kp_current)), dtype=int)
+        box_flag_last=np.zeros((len(bBoxes_last),len(good_kp_last)), dtype=int)
+        last_boxID=np.arange(0,len(bBoxes_last),1,dtype=int) 
+
+                   
+        for idx_box, box in enumerate(bBoxes_current):
+            for idx_keypoint, keypoint in enumerate(good_kp_current):
+                if self.__box_contains(box.roi,keypoint):
+                    box_flag_current[idx_box,idx_keypoint]=1
+                       
+        for idx_box, box in enumerate(bBoxes_last):
+            for idx_keypoint, keypoint in enumerate(good_kp_last):
+                if self.__box_contains(box.roi,keypoint):
+                    box_flag_last[idx_box,idx_keypoint]=1
+        
+
+        #each box is like a feature vectors with length num_of_keypoints
+        #similarity score matrix size : (num_of_boxes_last,num_of_boxes_current )
+        box_similarity=np.dot(box_flag_last,box_flag_current.T)   
+                    
+        #last_boxID->current_boxID
+        match_idx=np.argmax(box_similarity,axis=1)      
+        #set matches for the last_frame boxes who don't have any keypoint matches to -1
+        num_of_matches=np.sum(box_similarity,axis=1)       
+        noMatch_indeces=np.argwhere(num_of_matches == 0)  #set the match for these to -1
+        for idx in noMatch_indeces:
+            match_idx[idx]=-1
+        bbBestMatches2=[(last_boxID[i], current_boxID[idx]) for i,idx in enumerate(match_idx) if idx >=0 ]            
+        return bbBestMatches1
+        
+    def clusterKptMatchesWithROI(self,box_current,good_kp_current,good_kp_last,good_matches):
+        #associate a given bounding box with the keypoints it contains
+        dist=[np.linalg.norm(np.asarray(kpt_curr.pt)-np.asarray(kpt_last.pt)) for kpt_curr,kpt_last in zip(good_kp_current,good_kp_last)]
+        dist_mean=np.mean(dist)
+        dist_std=np.std(dist) 
+        current_keypoints=[]
+        current_matches=[]
+        matched_keypoints=[]
+        for kp_current,kp_last,match in zip(good_kp_current,good_kp_last,good_matches):
+            dist_match=np.linalg.norm(np.asarray(kp_current.pt)-np.asarray(kp_last.pt))             
+            if np.abs(dist_match-dist_mean)<dist_std:
+                if self.__box_contains(box_current.roi,kp_current):
+                    current_keypoints.append(kp_current)    
+                    current_matches.append(current_matches)
+                    matched_keypoints.append(kp_last)                
+        box_current.keypoints=current_keypoints
+        #Udacity template  defines kptMatches as match and extracts matched keypoints inside TTC camera:
+        #box_current.kptMatches=current_matches
+        #Use kptMatches store matched keypoints to use for TTC calculation later since we calculate it here anyway
+        box_current.kptMatches=matched_keypoints 
+
+    
+    def __box_contains(self,roi, kp):
+        ''' roi=:[x,y,w,h]
+            kp.pt:[x,y]
+            px_inside_roi = keypoints[inside_box]
+            px_outside_roi = keypoints[~inside_box]'''        
+        bound_x = np.logical_and(kp.pt[0] > roi[0], kp.pt[0] < roi[0]+roi[2] )
+        bound_y = np.logical_and(kp.pt[1] > roi[1], kp.pt[1]<  roi[1]+roi[3])    
+        inside_box = np.logical_and(bound_x, bound_y) 
+        return inside_box
+    
+    def computeTTCcamera(self,currBox,frameRate):
+        '''
+        Compute time-to-collision (TTC) based on keypoint correspondences in successive images
+        '''
+        distRatios=[]
+        minDist=100.0 #min distance required
+        kp_current=currBox.keypoints
+        kp_last=currBox.kptMatches
+
+        #inefficient but ok for now
+        for idx1 in range(len(kp_current)-1):
+            for idx2 in range(1,len(kp_current)):
+                distCurr= np.linalg.norm(np.asarray(kp_current[idx1].pt)-np.asarray(kp_current[idx2].pt))
+                distLast= np.linalg.norm(np.asarray(kp_last[idx1].pt)-np.asarray(kp_last[idx2].pt))
+                if (distLast>0) and (distCurr>=minDist):
+                    distRatios.append(distCurr/distLast)
+        if len(distRatios)==0:
+            TTC=-1
+            # print('TTC cannot be calculated.')
+        else:
+            medDistRatio=np.median(distRatios)
+            dT=1/frameRate
+            TTC=-dT/(1-medDistRatio)  
+        #return TTC       
+        return TTC
     
         
 class LidarProcessing:
@@ -76,7 +211,7 @@ class LidarProcessing:
         return np.delete(p_lidar, 2, axis=0) #only keep x,y #2xn
 
     def cluster_lidar_with_ROI(self, bBoxes,lidar_px,lidar_pts):  
-                #lidar_px: (2,n)
+        #lidar_px: (2,n)
         #lidar_pts=(n,4)
         #bBoxes is a list,it will be modified here
         select_bool=np.ones(lidar_px.shape[1],dtype=bool) #1: can be selected        
@@ -145,7 +280,30 @@ class LidarProcessing:
             lidar_bgr_color.append( (0,green,red) ) #opencv
         return cropped_lidar_pts, lidar_bgr_color    
     
-
+    def computeTTCLidar(self,currBox,lastBox, frameRate):
+        lidar_pts_current=currBox.lidarPoints
+        lidar_pts_past=lastBox.lidarPoints
+        if len(lidar_pts_current)>0 and len(lidar_pts_past)>0:
+            #get median of  5 min_ samples 
+            idx=min(5,len(lidar_pts_current))
+            min_X_curr=np.sort(lidar_pts_current[:,0])
+            min_X_last=np.sort(lidar_pts_past[:,0])
+            # med_X_curr=np.median(min_X_curr[:idx])
+            # med_X_last=np.median(min_X_last[:idx])
+            med_X_curr=np.median(min_X_curr[:])
+            med_X_last=np.median(min_X_last[:])
+            dT=1/frameRate
+            dist=med_X_last-med_X_curr
+            if abs(dist)<0.1:
+                TTC=med_X_curr*dT/0.1
+            else:
+                TTC=med_X_curr*dT/dist
+        else:
+            TTC=-1
+        return TTC
+    
+  
+    
     def __depth_color(self,val, min_d=0, max_d=120):
         """ 
         print Color(HSV's H value) corresponding to distance(m) 

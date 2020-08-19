@@ -154,6 +154,8 @@ class View:
         return cv.cvtColor(topviewImg, cv.COLOR_BGR2RGB) #to display as plt
 
     def lidar_overlay_objects(self,bBoxes,img,max_d): 
+        img=img.copy()        
+
         for idx,box in enumerate(bBoxes):
             for idx in range(box.lidarPixels.shape[1]):#(2,n)
                 #compute color of each point based on distance
@@ -163,6 +165,19 @@ class View:
                 color_px= (0,green,red) #opencv
                 img=cv.circle(img, (np.int32(box.lidarPixels[0,idx]),np.int32(box.lidarPixels[1,idx])),4, color_px,-1)             
         return cv.cvtColor(img, cv.COLOR_BGR2RGB) #to display as plt       
+    
+    def TTC_camera_view(self, current_frame,TTC):
+        img=current_frame.cameraImg.copy()        
+        for (curr_boxID,TTC_cam,TTC_lidar) in TTC:  
+            box=current_frame.boundingBoxes[curr_boxID]
+            if len(box.lidarPoints>0):
+                [x,y,w,h]=box.roi
+                cv.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 1)
+                text = "TTC camera: {0:2.1f}".format(float(TTC_cam) )
+                cv.putText(img, text, (x+5, y+h-25), cv.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0), 2)       
+                text = "TTC lidar: {0:2.1f}".format(float(TTC_lidar))
+                cv.putText(img, text, (x+5, y+h-10), cv.FONT_HERSHEY_SIMPLEX,0.5, (0, 255, 0),2)   
+        return img
 
 
         
@@ -218,5 +233,25 @@ class Plot:
         self.plot5.set_data(cv.cvtColor(img_current, cv.COLOR_BGR2RGB))
         
             
+class Plot_TTC:
     
+    def __init__(self):        
+        
+        img_init=np.zeros((300,1000), np.uint8)
+        self.fig1, axs1 = plt.subplots()
+        self.plot1=axs1.imshow(img_init,vmin=0,vmax=255)#defining vmin,vmax is necessary
+        axs1.set_title('Time to Collosion', fontsize=10)
+        axs1.axis('off')
+
+        figManager = plt.get_current_fig_manager()
+        figManager.window.showMaximized()
+        # plt.tight_layout()
+
+                
+        
+    def get_figure(self):
+        return self.fig1
+   
     
+    def update(self,img_TTC):
+        self.plot1.set_data(img_TTC)

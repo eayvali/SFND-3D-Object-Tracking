@@ -14,11 +14,16 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 - CameraProcessing class implements all image processing methods
 	- computeFeatureDescriptors: given two consecutive frames, computes FAST keypoint detector and BRIEF descriptors for each frame (Step 5-6)
 	- matchFeatureDescriptor: computes good descriptor matches based on distance ratio test (Step 7)
+	- matchBoundingBoxes: matches bounding boxes between two consecutive frames based on keypoint matches
+	- clusterKptMatchesWithROI:associates a given bounding box with the keypoints it contains (Step 8)
+	- computeTTCcamera:computes time-to-collision  based on keypoint correspondences in successive images (Step 9)
+	
 - LidarProcessing class implements all LiDAR processing methods
 	- projectLidarToCam: projects 3D lidar points to camera image and returns 2D lidar coordinates in camera space 
 	- velo_points_filter_kitti:crops lidar points based on [2] vertical and horizontal field of view  (pitch, yaw). (Step 3)
 	- crop_lidar_points: crops lidar points based on a given 3D position range and reflectivity. (Step 3)
 	- cluster_lidar_with_ROI: given anchor box coordinates from YOLO, clusters the lidar points within the bounding boxes and removes overlaps (Step 4)
+	- computeTTCLidar: computes mean distance to the car in the ego lane to calculate time-to-collision (Step 9)
 
 **/scripts/YOLO.py :**
 
@@ -38,6 +43,9 @@ The starter code in the nanodegree is gradually developed in C++ in 7 steps as p
 - Plot class: helper class for creating animation
 
 ![code_structure](./figures/CodeStructure.png)
+
+
+![TTC](./figures/TTC_cl.gif)
 
 ## Dependencies
 
